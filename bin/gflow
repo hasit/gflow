@@ -102,7 +102,7 @@ write_prefix() {
 
 prefix_command() {
 	if [ "$#" -eq 0 ]; then
-		prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix hasit/"
+		prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
 		printf '%s\n' "$prefix"
 		return 0
 	fi
@@ -125,7 +125,7 @@ prefix_command() {
 
 target_branch() {
 	feature=$1
-	prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix hasit/"
+	prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
 	prefix=$(normalize_prefix "$prefix")
 
 	case $feature in
@@ -185,7 +185,7 @@ done_command() {
 	fi
 
 	if [ -z "$branch" ]; then
-		die "could not determine current branch; pass one, e.g. gflow done hasit/my-feature"
+		die "could not determine current branch; pass one, e.g. gflow done team/my-feature"
 	fi
 
 	if is_protected_branch "$branch"; then

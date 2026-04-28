@@ -3,7 +3,7 @@
 Small Git branch workflow helpers:
 
 ```sh
-gflow prefix hasit/
+gflow prefix team/
 gflow new release-script
 gflow done
 gdone
@@ -16,7 +16,7 @@ branch, and prunes `origin`.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/hasit/gflow/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/<owner>/gflow/main/install.sh | sh
 ```
 
 The installer detects `$SHELL` and installs the matching shell integration:
@@ -27,15 +27,39 @@ The installer detects `$SHELL` and installs the matching shell integration:
   sourcing `~/.bashrc` on macOS
 
 The executable scripts are installed to `~/.local/bin` by default.
+The installer carries an embedded copy of the runtime files, so the one-line
+install does not depend on a hard-coded repository owner after it is downloaded.
 
 ## Options
 
+Installer options are set while running `install.sh`:
+
 ```sh
 GFLOW_INSTALL_DIR="$HOME/bin" sh install.sh
-GFLOW_SHELL=fish sh install.sh
-GFLOW_MAIN_BRANCH=trunk gflow new my-feature
-GFLOW_REMOTE=upstream gflow done
+GFLOW_SHELL=zsh sh install.sh
+GFLOW_BASE_URL="https://raw.githubusercontent.com/<owner>/gflow/main" sh install.sh
 ```
+
+- `GFLOW_INSTALL_DIR` changes where `gflow` and `gdone` are installed. The
+  default is `~/.local/bin`.
+- `GFLOW_SHELL` overrides shell detection. Use this when `$SHELL` is missing,
+  points at a parent shell, or you want to install integration for `fish`,
+  `zsh`, or `bash` explicitly.
+- `GFLOW_BASE_URL` makes the installer download live repo files instead of
+  using the embedded copy. This is useful for forks, mirrors, or testing a
+  branch before it is merged.
+
+Runtime options are set when running `gflow`:
+
+```sh
+GFLOW_MAIN_BRANCH=trunk gflow new my-feature
+GFLOW_REMOTE=upstream gflow done team/my-feature
+```
+
+- `GFLOW_MAIN_BRANCH` changes the base branch used by `gflow new` and
+  `gflow done`. The default is `main`.
+- `GFLOW_REMOTE` changes the Git remote used for pulls, remote-branch checks,
+  and pruning. The default is `origin`.
 
 ## Commands
 
