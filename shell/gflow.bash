@@ -11,25 +11,15 @@ case ":$PATH:" in
 esac
 unset _gflow_install_dir
 
-gdone() {
-	command gflow done "$@"
-}
-
 _gflow_local_branches() {
 	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null |
 		grep -v -E '^(main|master|develop)$'
 }
 
 _gflow_complete() {
-	local cur command_name
+	local cur
 
 	cur=${COMP_WORDS[COMP_CWORD]}
-	command_name=${COMP_WORDS[0]##*/}
-
-	if [ "$command_name" = "gdone" ]; then
-		COMPREPLY=($(compgen -W "$(_gflow_local_branches)" -- "$cur"))
-		return 0
-	fi
 
 	if [ "$COMP_CWORD" -eq 1 ]; then
 		COMPREPLY=($(compgen -W "prefix new done help" -- "$cur"))
@@ -51,5 +41,4 @@ _gflow_complete() {
 
 if command -v complete >/dev/null 2>&1; then
 	complete -F _gflow_complete gflow
-	complete -F _gflow_complete gdone
 fi

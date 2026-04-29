@@ -5,7 +5,7 @@ Small Git branch workflow helpers:
 ```sh
 gflow prefix team/
 gflow new api-cleanup
-gdone team/api-cleanup
+gflow done team/api-cleanup
 ```
 
 `gflow new <feature>` creates a prefixed feature branch from an updated `main`.
@@ -27,8 +27,7 @@ The installer detects `$SHELL` and installs the matching shell integration:
   with `~/.bash_profile` sourcing `~/.bashrc` on macOS
 - Other shells: a generic PATH setup in `~/.profile`
 
-The `gflow` executable is installed to `~/.local/bin` by default. `gdone` is a
-shortcut to `gflow done`, not a separate implementation.
+The `gflow` executable is installed to `~/.local/bin` by default.
 The installer carries an embedded copy of the runtime files, so the one-line
 install does not depend on a hard-coded GitHub account after it is downloaded.
 
@@ -70,5 +69,4 @@ gflow prefix [prefix]  # show or set branch prefix
 gflow new <feature>   # create <prefix><feature> from origin/main
 gflow done [branch]   # switch to main, pull, delete branch, prune origin
 gflow help            # show usage
-gdone [branch]        # shortcut for gflow done [branch]
 ```

@@ -12,7 +12,6 @@ Usage:
   gflow new <feature>
   gflow done [branch]
   gflow help
-  gdone [branch]
 EOF
 }
 
@@ -207,11 +206,6 @@ done_command() {
 
 	command git fetch --prune "$remote"
 }
-
-program=${0##*/}
-if [ "$program" = "gdone" ]; then
-	set -- done "$@"
-fi
 
 subcommand=${1:-help}
 if [ "$#" -gt 0 ]; then

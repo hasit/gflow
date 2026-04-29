@@ -46,7 +46,6 @@ Usage:
   gflow new <feature>
   gflow done [branch]
   gflow help
-  gdone [branch]
 EOF
 }
 
@@ -242,11 +241,6 @@ done_command() {
 	command git fetch --prune "$remote"
 }
 
-program=${0##*/}
-if [ "$program" = "gdone" ]; then
-	set -- done "$@"
-fi
-
 subcommand=${1:-help}
 if [ "$#" -gt 0 ]; then
 	shift
@@ -288,25 +282,15 @@ case ":$PATH:" in
 esac
 unset _gflow_install_dir
 
-gdone() {
-	command gflow done "$@"
-}
-
 _gflow_local_branches() {
 	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null |
 		grep -v -E '^(main|master|develop)$'
 }
 
 _gflow_complete() {
-	local cur command_name
+	local cur
 
 	cur=${COMP_WORDS[COMP_CWORD]}
-	command_name=${COMP_WORDS[0]##*/}
-
-	if [ "$command_name" = "gdone" ]; then
-		COMPREPLY=($(compgen -W "$(_gflow_local_branches)" -- "$cur"))
-		return 0
-	fi
 
 	if [ "$COMP_CWORD" -eq 1 ]; then
 		COMPREPLY=($(compgen -W "prefix new done help" -- "$cur"))
@@ -328,7 +312,6 @@ _gflow_complete() {
 
 if command -v complete >/dev/null 2>&1; then
 	complete -F _gflow_complete gflow
-	complete -F _gflow_complete gdone
 fi
 GFLOW_BASH
 			;;
@@ -345,16 +328,11 @@ if test -d "$gflow_install_dir"
 	end
 end
 
-function gdone --description 'Shortcut for gflow done'
-	command gflow done $argv
-end
-
 function __fish_gflow_local_branches
 	command git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null | command grep -v -E '^(main|master|develop)$'
 end
 
 complete -c gflow -e
-complete -c gdone -e
 
 complete -c gflow -f
 complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a prefix -d 'Show or set branch prefix'
@@ -364,8 +342,6 @@ complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a h
 complete -c gflow -n '__fish_seen_subcommand_from prefix' -f -a 'team/' -d 'Branch prefix'
 complete -c gflow -n '__fish_seen_subcommand_from done' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
 complete -c gflow -n '__fish_seen_subcommand_from new' -f
-
-complete -c gdone -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
 GFLOW_FISH
 			;;
 		shell/gflow.zsh)
@@ -383,10 +359,6 @@ case ":$PATH:" in
 esac
 unset _gflow_install_dir
 
-gdone() {
-	command gflow done "$@"
-}
-
 _gflow_local_branches() {
 	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null |
 		grep -v -E '^(main|master|develop)$'
@@ -395,11 +367,6 @@ _gflow_local_branches() {
 _gflow() {
 	local context state line
 	typeset -A opt_args
-
-	if [[ "${service:-}" == "gdone" ]]; then
-		_arguments '1:branch:($(_gflow_local_branches))'
-		return
-	fi
 
 	_arguments -C \
 		'1:command:((prefix\:Show\ or\ set\ branch\ prefix new\:Create\ a\ prefixed\ feature\ branch\ from\ main done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
@@ -429,7 +396,6 @@ fi
 
 if whence -w compdef >/dev/null 2>&1; then
 	compdef _gflow gflow
-	compdef _gflow gdone
 fi
 GFLOW_ZSH
 			;;
@@ -513,14 +479,13 @@ install_executable() {
 
 	cp "$tmp_dir/gflow" "$install_dir/gflow"
 	chmod 0755 "$install_dir/gflow"
-
-	if ! ln -sf gflow "$install_dir/gdone" 2>/dev/null; then
-		cp "$install_dir/gflow" "$install_dir/gdone"
-		chmod 0755 "$install_dir/gdone"
-	fi
 }
 
 cleanup_legacy_files() {
+	if [ ! -d "$install_dir/gdone" ]; then
+		rm -f "$install_dir/gdone"
+	fi
+
 	rm -f \
 		"$config_home/fish/completions/gflow.fish" \
 		"$config_home/fish/completions/gdone.fish" \

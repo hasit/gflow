@@ -11,10 +11,6 @@ case ":$PATH:" in
 esac
 unset _gflow_install_dir
 
-gdone() {
-	command gflow done "$@"
-}
-
 _gflow_local_branches() {
 	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null |
 		grep -v -E '^(main|master|develop)$'
@@ -23,11 +19,6 @@ _gflow_local_branches() {
 _gflow() {
 	local context state line
 	typeset -A opt_args
-
-	if [[ "${service:-}" == "gdone" ]]; then
-		_arguments '1:branch:($(_gflow_local_branches))'
-		return
-	fi
 
 	_arguments -C \
 		'1:command:((prefix\:Show\ or\ set\ branch\ prefix new\:Create\ a\ prefixed\ feature\ branch\ from\ main done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
@@ -57,5 +48,4 @@ fi
 
 if whence -w compdef >/dev/null 2>&1; then
 	compdef _gflow gflow
-	compdef _gflow gdone
 fi
