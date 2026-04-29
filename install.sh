@@ -273,28 +273,37 @@ case $subcommand in
 esac
 GFLOW_BIN
 			;;
-		bin/gdone)
-			cat >"$destination" <<'GFLOW_GDONE'
-#!/bin/sh
-
-script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd) || exit 1
-exec "$script_dir/gflow" done "$@"
-GFLOW_GDONE
-			;;
-		completions/gflow.bash)
+		shell/gflow.bash)
 			cat >"$destination" <<'GFLOW_BASH'
+# gflow shell integration for Bash. Source from ~/.bashrc.
+
+_gflow_install_dir="@GFLOW_INSTALL_DIR@"
+case ":$PATH:" in
+	*":$_gflow_install_dir:"*)
+		;;
+	*)
+		PATH="$_gflow_install_dir:$PATH"
+		export PATH
+		;;
+esac
+unset _gflow_install_dir
+
+gdone() {
+	command gflow done "$@"
+}
+
 _gflow_local_branches() {
 	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null |
 		grep -v -E '^(main|master|develop)$'
 }
 
 _gflow_complete() {
-	local cur command
+	local cur command_name
 
 	cur=${COMP_WORDS[COMP_CWORD]}
-	command=${COMP_WORDS[0]##*/}
+	command_name=${COMP_WORDS[0]##*/}
 
-	if [ "$command" = "gdone" ]; then
+	if [ "$command_name" = "gdone" ]; then
 		COMPREPLY=($(compgen -W "$(_gflow_local_branches)" -- "$cur"))
 		return 0
 	fi
@@ -317,42 +326,67 @@ _gflow_complete() {
 	esac
 }
 
-complete -F _gflow_complete gflow
-complete -F _gflow_complete gdone
+if command -v complete >/dev/null 2>&1; then
+	complete -F _gflow_complete gflow
+	complete -F _gflow_complete gdone
+fi
 GFLOW_BASH
 			;;
-		completions/gflow.fish)
+		shell/gflow.fish)
 			cat >"$destination" <<'GFLOW_FISH'
+# gflow shell integration for Fish. Loaded from conf.d.
+
+set -l gflow_install_dir "@GFLOW_INSTALL_DIR@"
+if test -d "$gflow_install_dir"
+	if type -q fish_add_path
+		fish_add_path -g "$gflow_install_dir"
+	else if not contains "$gflow_install_dir" $fish_user_paths
+		set -U fish_user_paths "$gflow_install_dir" $fish_user_paths
+	end
+end
+
+function gdone --description 'Shortcut for gflow done'
+	command gflow done $argv
+end
+
 function __fish_gflow_local_branches
 	command git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null | command grep -v -E '^(main|master|develop)$'
 end
 
 complete -c gflow -e
+complete -c gdone -e
 
 complete -c gflow -f
 complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a prefix -d 'Show or set branch prefix'
 complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a new -d 'Create a prefixed feature branch from main'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a done -d 'Finish and delete a merged feature branch'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a done -d 'Finish and delete a local feature branch'
 complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a help -d 'Show usage'
 complete -c gflow -n '__fish_seen_subcommand_from prefix' -f -a 'team/' -d 'Branch prefix'
 complete -c gflow -n '__fish_seen_subcommand_from done' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
 complete -c gflow -n '__fish_seen_subcommand_from new' -f
+
+complete -c gdone -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
 GFLOW_FISH
 			;;
-		completions/gdone.fish)
-			cat >"$destination" <<'GFLOW_GDONE_FISH'
-if not functions -q __fish_gflow_local_branches
-	function __fish_gflow_local_branches
-		command git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null | command grep -v -E '^(main|master|develop)$'
-	end
-end
-
-complete -c gdone -e
-complete -c gdone -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
-GFLOW_GDONE_FISH
-			;;
-		completions/gflow.zsh)
+		shell/gflow.zsh)
 			cat >"$destination" <<'GFLOW_ZSH'
+# gflow shell integration for Zsh. Source from ~/.zshrc or $ZDOTDIR/.zshrc.
+
+_gflow_install_dir="@GFLOW_INSTALL_DIR@"
+case ":$PATH:" in
+	*":$_gflow_install_dir:"*)
+		;;
+	*)
+		PATH="$_gflow_install_dir:$PATH"
+		export PATH
+		;;
+esac
+unset _gflow_install_dir
+
+gdone() {
+	command gflow done "$@"
+}
+
 _gflow_local_branches() {
 	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null |
 		grep -v -E '^(main|master|develop)$'
@@ -362,13 +396,13 @@ _gflow() {
 	local context state line
 	typeset -A opt_args
 
-	if [[ "${service}" == "gdone" ]]; then
+	if [[ "${service:-}" == "gdone" ]]; then
 		_arguments '1:branch:($(_gflow_local_branches))'
 		return
 	fi
 
 	_arguments -C \
-		'1:command:((prefix\:Show\ or\ set\ branch\ prefix new\:Create\ a\ prefixed\ feature\ branch\ from\ main done\:Finish\ and\ delete\ a\ merged\ feature\ branch help\:Show\ usage))' \
+		'1:command:((prefix\:Show\ or\ set\ branch\ prefix new\:Create\ a\ prefixed\ feature\ branch\ from\ main done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
 		'*::arg:->args'
 
 	case $state in
@@ -388,8 +422,15 @@ _gflow() {
 	esac
 }
 
-compdef _gflow gflow
-compdef _gflow gdone
+autoload -Uz compinit
+if ! whence -w compdef >/dev/null 2>&1; then
+	compinit -i
+fi
+
+if whence -w compdef >/dev/null 2>&1; then
+	compdef _gflow gflow
+	compdef _gflow gdone
+fi
 GFLOW_ZSH
 			;;
 		*)
@@ -412,16 +453,48 @@ fetch() {
 	fi
 }
 
+render_integration() {
+	render_source_path=$1
+	render_destination=$2
+	render_source_file=$tmp_dir/$(basename "$render_source_path")
+	render_escaped_install_dir=$(printf '%s' "$install_dir" | sed 's/[&|]/\\&/g')
+
+	fetch "$render_source_path" "$render_source_file"
+	sed "s|@GFLOW_INSTALL_DIR@|$render_escaped_install_dir|g" "$render_source_file" >"$render_destination"
+}
+
 append_block() {
 	file=$1
 	block=$2
 	marker_start="# >>> gflow >>>"
 	marker_end="# <<< gflow <<<"
+	block_file=$tmp_dir/rc-block.$$
 
 	mkdir -p "$(dirname "$file")"
 	touch "$file"
 
 	if grep -F "$marker_start" "$file" >/dev/null 2>&1; then
+		awk -v start="$marker_start" -v end="$marker_end" -v block="$block" '
+			$0 == start {
+				print start
+				line_count = split(block, lines, "\n")
+				for (line = 1; line <= line_count; line++) {
+					print lines[line]
+				}
+				print end
+				in_block = 1
+				next
+			}
+			$0 == end && in_block {
+				in_block = 0
+				next
+			}
+			!in_block {
+				print
+			}
+		' "$file" >"$block_file" || die "could not update $file"
+		cat "$block_file" >"$file" || die "could not replace $file"
+		rm -f "$block_file"
 		return 0
 	fi
 
@@ -432,47 +505,45 @@ append_block() {
 	} >>"$file"
 }
 
-install_executables() {
+install_executable() {
 	mkdir -p "$install_dir"
 
 	fetch bin/gflow "$tmp_dir/gflow"
-	fetch bin/gdone "$tmp_dir/gdone"
 	chmod 0755 "$tmp_dir/gflow"
-	chmod 0755 "$tmp_dir/gdone"
 
 	cp "$tmp_dir/gflow" "$install_dir/gflow"
-	cp "$tmp_dir/gdone" "$install_dir/gdone"
-	chmod 0755 "$install_dir/gflow" "$install_dir/gdone"
+	chmod 0755 "$install_dir/gflow"
+
+	if ! ln -sf gflow "$install_dir/gdone" 2>/dev/null; then
+		cp "$install_dir/gflow" "$install_dir/gdone"
+		chmod 0755 "$install_dir/gdone"
+	fi
+}
+
+cleanup_legacy_files() {
+	rm -f \
+		"$config_home/fish/completions/gflow.fish" \
+		"$config_home/fish/completions/gdone.fish" \
+		"$config_dir/completion.bash" \
+		"$config_dir/completion.zsh"
 }
 
 install_fish() {
-	fish_config_dir=$config_home/fish
+	fish_conf_dir=$config_home/fish/conf.d
 
-	mkdir -p "$fish_config_dir/conf.d" "$fish_config_dir/completions"
-	fetch completions/gflow.fish "$fish_config_dir/completions/gflow.fish"
-	fetch completions/gdone.fish "$fish_config_dir/completions/gdone.fish"
+	mkdir -p "$fish_conf_dir"
+	render_integration shell/gflow.fish "$fish_conf_dir/gflow.fish"
 
-	cat >"$fish_config_dir/conf.d/gflow.fish" <<EOF
-set -l gflow_install_dir "$install_dir"
-if test -d "\$gflow_install_dir"
-	if type -q fish_add_path
-		fish_add_path -g "\$gflow_install_dir"
-	else if not contains "\$gflow_install_dir" \$fish_user_paths
-		set -U fish_user_paths "\$gflow_install_dir" \$fish_user_paths
-	end
-end
-EOF
-
-	log "installed Fish integration"
+	log "installed Fish integration to $fish_conf_dir/gflow.fish"
 }
 
 install_bash() {
+	integration_file=$config_dir/gflow.bash
+
 	mkdir -p "$config_dir"
-	fetch completions/gflow.bash "$config_dir/completion.bash"
+	render_integration shell/gflow.bash "$integration_file"
 
-	block="export PATH=\"$install_dir:\$PATH\"
-[ -r \"$config_dir/completion.bash\" ] && . \"$config_dir/completion.bash\""
-
+	block="[ -r \"$integration_file\" ] && . \"$integration_file\""
 	append_block "${GFLOW_BASH_RC:-"$home_dir/.bashrc"}" "$block"
 
 	if [ "$(uname -s 2>/dev/null || printf unknown)" = "Darwin" ]; then
@@ -481,35 +552,33 @@ install_bash() {
 		append_block "$profile" "$profile_block"
 	fi
 
-	log "installed Bash integration"
+	log "installed Bash integration to $integration_file"
 }
 
 install_zsh() {
+	integration_file=$config_dir/gflow.zsh
+	zsh_dot_dir=${ZDOTDIR:-$home_dir}
+
 	mkdir -p "$config_dir"
-	fetch completions/gflow.zsh "$config_dir/completion.zsh"
+	render_integration shell/gflow.zsh "$integration_file"
 
-	block="export PATH=\"$install_dir:\$PATH\"
-autoload -Uz compinit
-if ! whence -w compdef >/dev/null 2>&1; then
-	compinit -i
-fi
-[ -r \"$config_dir/completion.zsh\" ] && . \"$config_dir/completion.zsh\""
+	block="[ -r \"$integration_file\" ] && . \"$integration_file\""
+	append_block "${GFLOW_ZSH_RC:-"$zsh_dot_dir/.zshrc"}" "$block"
 
-	append_block "${GFLOW_ZSH_RC:-"$home_dir/.zshrc"}" "$block"
-
-	log "installed Zsh integration"
+	log "installed Zsh integration to $integration_file"
 }
 
 install_posix_profile() {
 	block="export PATH=\"$install_dir:\$PATH\""
 	append_block "${GFLOW_PROFILE:-"$home_dir/.profile"}" "$block"
-	log "installed PATH setup in .profile"
+	log "installed generic PATH setup in .profile"
 }
 
 tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/gflow-install.XXXXXX") || die "could not create temp directory"
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 
-install_executables
+install_executable
+cleanup_legacy_files
 
 case $detected_shell in
 	fish)
@@ -521,11 +590,14 @@ case $detected_shell in
 	zsh)
 		install_zsh
 		;;
+	sh|dash|ksh|ash)
+		install_posix_profile
+		;;
 	*)
 		install_posix_profile
 		log "unknown shell '${detected_shell:-unknown}', installed generic PATH setup"
 		;;
 esac
 
-log "installed gflow to $install_dir"
+log "installed gflow to $install_dir/gflow"
 log "restart your shell, then run: gflow help"

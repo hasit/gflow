@@ -4,9 +4,8 @@ Small Git branch workflow helpers:
 
 ```sh
 gflow prefix team/
-gflow new release-script
-gflow done
-gdone
+gflow new api-cleanup
+gdone team/api-cleanup
 ```
 
 `gflow new <feature>` creates a prefixed feature branch from an updated `main`.
@@ -21,12 +20,15 @@ curl -fsSL https://raw.githubusercontent.com/<owner>/gflow/main/install.sh | sh
 
 The installer detects `$SHELL` and installs the matching shell integration:
 
-- Fish: `~/.config/fish/conf.d/gflow.fish` plus Fish completions
-- Zsh: `~/.zshrc` setup plus Zsh completions
-- Bash: `~/.bashrc` setup plus Bash completions, with `~/.bash_profile`
-  sourcing `~/.bashrc` on macOS
+- Fish: one file at `~/.config/fish/conf.d/gflow.fish`
+- Zsh: one file at `~/.config/gflow/gflow.zsh`, sourced from
+  `${ZDOTDIR:-$HOME}/.zshrc`
+- Bash: one file at `~/.config/gflow/gflow.bash`, sourced from `~/.bashrc`,
+  with `~/.bash_profile` sourcing `~/.bashrc` on macOS
+- Other shells: a generic PATH setup in `~/.profile`
 
-The executable scripts are installed to `~/.local/bin` by default.
+The `gflow` executable is installed to `~/.local/bin` by default. `gdone` is a
+shortcut to `gflow done`, not a separate implementation.
 The installer carries an embedded copy of the runtime files, so the one-line
 install does not depend on a hard-coded repository owner after it is downloaded.
 
@@ -40,11 +42,11 @@ GFLOW_SHELL=zsh sh install.sh
 GFLOW_BASE_URL="https://raw.githubusercontent.com/<owner>/gflow/main" sh install.sh
 ```
 
-- `GFLOW_INSTALL_DIR` changes where `gflow` and `gdone` are installed. The
-  default is `~/.local/bin`.
+- `GFLOW_INSTALL_DIR` changes where the `gflow` executable is installed. The
+  default is `~/.local/bin`; shell integration points at this directory.
 - `GFLOW_SHELL` overrides shell detection. Use this when `$SHELL` is missing,
   points at a parent shell, or you want to install integration for `fish`,
-  `zsh`, or `bash` explicitly.
+  `zsh`, `bash`, or a generic `sh` PATH setup explicitly.
 - `GFLOW_BASE_URL` makes the installer download live repo files instead of
   using the embedded copy. This is useful for forks, mirrors, or testing a
   branch before it is merged.

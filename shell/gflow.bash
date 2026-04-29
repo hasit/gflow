@@ -1,15 +1,32 @@
+# gflow shell integration for Bash. Source from ~/.bashrc.
+
+_gflow_install_dir="@GFLOW_INSTALL_DIR@"
+case ":$PATH:" in
+	*":$_gflow_install_dir:"*)
+		;;
+	*)
+		PATH="$_gflow_install_dir:$PATH"
+		export PATH
+		;;
+esac
+unset _gflow_install_dir
+
+gdone() {
+	command gflow done "$@"
+}
+
 _gflow_local_branches() {
 	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null |
 		grep -v -E '^(main|master|develop)$'
 }
 
 _gflow_complete() {
-	local cur command
+	local cur command_name
 
 	cur=${COMP_WORDS[COMP_CWORD]}
-	command=${COMP_WORDS[0]##*/}
+	command_name=${COMP_WORDS[0]##*/}
 
-	if [ "$command" = "gdone" ]; then
+	if [ "$command_name" = "gdone" ]; then
 		COMPREPLY=($(compgen -W "$(_gflow_local_branches)" -- "$cur"))
 		return 0
 	fi
@@ -32,5 +49,7 @@ _gflow_complete() {
 	esac
 }
 
-complete -F _gflow_complete gflow
-complete -F _gflow_complete gdone
+if command -v complete >/dev/null 2>&1; then
+	complete -F _gflow_complete gflow
+	complete -F _gflow_complete gdone
+fi
