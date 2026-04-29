@@ -15,7 +15,7 @@ branch, and prunes `origin`.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/<owner>/gflow/main/install.sh | sh
+curl -fsSL https://hasit.github.io/gflow/install.sh | sh
 ```
 
 The installer detects `$SHELL` and installs the matching shell integration:
@@ -30,7 +30,7 @@ The installer detects `$SHELL` and installs the matching shell integration:
 The `gflow` executable is installed to `~/.local/bin` by default. `gdone` is a
 shortcut to `gflow done`, not a separate implementation.
 The installer carries an embedded copy of the runtime files, so the one-line
-install does not depend on a hard-coded repository owner after it is downloaded.
+install does not depend on a hard-coded GitHub account after it is downloaded.
 
 ## Options
 
@@ -39,7 +39,7 @@ Installer options are set while running `install.sh`:
 ```sh
 GFLOW_INSTALL_DIR="$HOME/bin" sh install.sh
 GFLOW_SHELL=zsh sh install.sh
-GFLOW_BASE_URL="https://raw.githubusercontent.com/<owner>/gflow/main" sh install.sh
+GFLOW_BASE_URL="https://raw.githubusercontent.com/example-org/gflow/main" sh install.sh
 ```
 
 - `GFLOW_INSTALL_DIR` changes where the `gflow` executable is installed. The

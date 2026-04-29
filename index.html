@@ -141,19 +141,88 @@
       line-height: 1.48;
     }
 
-    .install {
-      display: block;
+    .install-shell {
+      display: flex;
+      align-items: stretch;
       width: min(100%, 720px);
-      overflow-x: auto;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--ivory);
+      overflow: hidden;
+    }
+
+    .install {
+      display: block;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-x: auto;
+      border: 0;
+      background: transparent;
       padding: 13px 15px;
       color: var(--charcoal);
       font-family: var(--mono);
       font-size: 13px;
       line-height: 1.45;
       white-space: nowrap;
+    }
+
+    .copy-button {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      border-left: 1px solid var(--border);
+      background: #f0efe7;
+      padding: 0 14px;
+      color: var(--brand);
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .copy-button:hover {
+      background: #ebe9df;
+    }
+
+    .copy-button:focus-visible {
+      outline: 2px solid var(--brand);
+      outline-offset: -2px;
+    }
+
+    .copy-icon {
+      position: relative;
+      width: 14px;
+      height: 16px;
+    }
+
+    .copy-icon::before,
+    .copy-icon::after {
+      position: absolute;
+      content: "";
+      border: 1.5px solid currentColor;
+      border-radius: 2px;
+    }
+
+    .copy-icon::before {
+      top: 0;
+      left: 4px;
+      width: 8px;
+      height: 10px;
+      opacity: 0.45;
+    }
+
+    .copy-icon::after {
+      right: 3px;
+      bottom: 0;
+      width: 8px;
+      height: 10px;
+      background: #f0efe7;
+    }
+
+    .copy-button:hover .copy-icon::after {
+      background: #ebe9df;
     }
 
     .content {
@@ -282,8 +351,15 @@
             A small shell tool for creating prefixed feature branches from a fresh base branch, cleaning up finished
             local branches, and installing one shell integration file for Fish, Zsh, Bash, or a generic PATH setup.
           </p>
-          <code
-            class="install">curl -fsSL https://raw.githubusercontent.com/&lt;owner&gt;/gflow/main/install.sh | sh</code>
+          <div class="install-shell">
+            <code
+              class="install"
+              id="install-command">curl -fsSL https://hasit.github.io/gflow/install.sh | sh</code>
+            <button class="copy-button" type="button" data-copy-target="install-command">
+              <span class="copy-icon" aria-hidden="true"></span>
+              <span class="copy-label" aria-live="polite">Copy</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -364,6 +440,62 @@
       <span>Designed for local Git branch workflows.</span>
     </footer>
   </div>
+  <script>
+    const copyButton = document.querySelector(".copy-button");
+
+    function fallbackCopy(command) {
+      const textarea = document.createElement("textarea");
+      textarea.value = command;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+
+      if (!copied) {
+        throw new Error("copy failed");
+      }
+    }
+
+    copyButton?.addEventListener("click", async () => {
+      const targetId = copyButton.getAttribute("data-copy-target");
+      const target = targetId ? document.getElementById(targetId) : null;
+      const label = copyButton.querySelector(".copy-label");
+      const command = target?.textContent?.trim();
+
+      if (!command || !label) {
+        return;
+      }
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(command);
+          } catch {
+            fallbackCopy(command);
+          }
+        } else {
+          fallbackCopy(command);
+        }
+
+        label.textContent = "Copied";
+        window.setTimeout(() => {
+          label.textContent = "Copy";
+        }, 1600);
+      } catch {
+        label.textContent = "Select";
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+    });
+  </script>
 </body>
 
 </html>
