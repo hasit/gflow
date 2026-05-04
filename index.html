@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description"
-    content="gflow creates prefixed feature branches, cleans up finished local branches, and installs one shell integration file for Fish, Zsh, Bash, or a generic PATH setup.">
+    content="gflow creates prefixed feature branches, opens pull requests, cleans up finished local branches, and installs one shell integration file for Fish, Zsh, Bash, or a generic PATH setup.">
   <title>gflow</title>
   <style>
     @font-face {
@@ -348,8 +348,9 @@
       <section class="hero" aria-label="Overview">
         <div>
           <p class="subtitle">
-            A small shell tool for creating prefixed feature branches from a fresh base branch, cleaning up finished
-            local branches, and installing one shell integration file for Fish, Zsh, Bash, or a generic PATH setup.
+            A small shell tool for creating prefixed feature branches from a configured base branch, opening pull
+            request pages, cleaning up finished local branches, and installing one shell integration file for Fish,
+            Zsh, Bash, or a generic PATH setup.
           </p>
           <div class="install-shell">
             <code
@@ -376,17 +377,29 @@
             <tbody>
               <tr>
                 <td><code class="command">gflow prefix team/</code></td>
-                <td>Save the branch prefix.</td>
+                <td>Save the branch prefix in local Git config.</td>
+              </tr>
+              <tr>
+                <td><code class="command">gflow base trunk</code></td>
+                <td>Save the base branch in local Git config.</td>
+              </tr>
+              <tr>
+                <td><code class="command">gflow remote upstream</code></td>
+                <td>Save the remote in local Git config.</td>
               </tr>
               <tr>
                 <td><code class="command">gflow new api-cleanup</code></td>
-                <td>Create <code>team/api-cleanup</code> from <code>origin/main</code>.</td>
+                <td>Create <code>team/api-cleanup</code> from the configured remote and base branch.</td>
+              </tr>
+              <tr>
+                <td><code class="command">gflow pr</code></td>
+                <td>Push the current branch upstream and open a pull request page.</td>
               </tr>
               <tr>
                 <td>
                   <code class="command">gflow done team/api-cleanup</code>
                 </td>
-                <td>Switch to <code>main</code>, pull, delete the branch, and prune <code>origin</code>.</td>
+                <td>Switch to the base branch, pull, delete the branch, and prune the remote.</td>
               </tr>
             </tbody>
           </table>
@@ -397,12 +410,27 @@
           <table class="options">
             <thead>
               <tr>
-                <th>Variable</th>
+                <th>Setting</th>
                 <th>Scope</th>
                 <th>Purpose</th>
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td><code class="option">gflow.branch-prefix</code></td>
+                <td>Repo</td>
+                <td>Store the branch prefix for this repository.</td>
+              </tr>
+              <tr>
+                <td><code class="option">gflow.main-branch</code></td>
+                <td>Repo</td>
+                <td>Store the base branch for this repository.</td>
+              </tr>
+              <tr>
+                <td><code class="option">gflow.remote</code></td>
+                <td>Repo</td>
+                <td>Store the remote for this repository.</td>
+              </tr>
               <tr>
                 <td><code class="option">GFLOW_INSTALL_DIR</code></td>
                 <td>Install</td>
@@ -421,12 +449,12 @@
               <tr>
                 <td><code class="option">GFLOW_MAIN_BRANCH</code></td>
                 <td>Runtime</td>
-                <td>Use a base branch other than <code>main</code>.</td>
+                <td>Override the base branch for one command.</td>
               </tr>
               <tr>
                 <td><code class="option">GFLOW_REMOTE</code></td>
                 <td>Runtime</td>
-                <td>Use a remote other than <code>origin</code>.</td>
+                <td>Override the remote for one command.</td>
               </tr>
             </tbody>
           </table>

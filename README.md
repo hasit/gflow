@@ -4,13 +4,18 @@ Small Git branch workflow helpers:
 
 ```sh
 gflow prefix team/
+gflow base trunk
+gflow remote upstream
 gflow new api-cleanup
+gflow pr
 gflow done team/api-cleanup
 ```
 
-`gflow new <feature>` creates a prefixed feature branch from an updated `main`.
-`gflow done [branch]` switches back to `main`, pulls, deletes the local feature
-branch, and prunes `origin`.
+`gflow new <feature>` creates a prefixed feature branch from an updated base branch.
+`gflow pr [branch]` pushes a feature branch, sets its upstream, and opens a
+pull request page when the remote URL format is recognized.
+`gflow done [branch]` switches back to the base branch, pulls, deletes the local
+feature branch, and prunes the configured remote.
 
 ## Install
 
@@ -29,7 +34,7 @@ The installer detects `$SHELL` and installs the matching shell integration:
 
 The `gflow` executable is installed to `~/.local/bin` by default.
 The installer carries an embedded copy of the runtime files, so the one-line
-install does not depend on a hard-coded GitHub account after it is downloaded.
+install does not depend on a hard-coded hosting account after it is downloaded.
 
 ## Options
 
@@ -38,7 +43,7 @@ Installer options are set while running `install.sh`:
 ```sh
 GFLOW_INSTALL_DIR="$HOME/bin" sh install.sh
 GFLOW_SHELL=zsh sh install.sh
-GFLOW_BASE_URL="https://raw.githubusercontent.com/example-org/gflow/main" sh install.sh
+GFLOW_BASE_URL="https://example.com/gflow" sh install.sh
 ```
 
 - `GFLOW_INSTALL_DIR` changes where the `gflow` executable is installed. The
@@ -50,23 +55,36 @@ GFLOW_BASE_URL="https://raw.githubusercontent.com/example-org/gflow/main" sh ins
   using the embedded copy. This is useful for forks, mirrors, or testing a
   branch before it is merged.
 
-Runtime options are set when running `gflow`:
+Repo settings are saved in local Git config:
+
+```sh
+gflow prefix team/
+gflow base trunk
+gflow remote upstream
+```
+
+- `gflow prefix [prefix]` stores `gflow.branch-prefix`.
+- `gflow base [branch]` stores `gflow.main-branch`. The default is `main`.
+- `gflow remote [remote]` stores `gflow.remote`. The default is `origin`.
+
+Runtime variables can override the repo settings for one command:
 
 ```sh
 GFLOW_MAIN_BRANCH=trunk gflow new my-feature
 GFLOW_REMOTE=upstream gflow done team/my-feature
 ```
 
-- `GFLOW_MAIN_BRANCH` changes the base branch used by `gflow new` and
-  `gflow done`. The default is `main`.
-- `GFLOW_REMOTE` changes the Git remote used for pulls, remote-branch checks,
-  and pruning. The default is `origin`.
+- `GFLOW_MAIN_BRANCH` overrides the base branch.
+- `GFLOW_REMOTE` overrides the configured remote.
 
 ## Commands
 
 ```sh
 gflow prefix [prefix]  # show or set branch prefix
-gflow new <feature>   # create <prefix><feature> from origin/main
-gflow done [branch]   # switch to main, pull, delete branch, prune origin
+gflow base [branch]    # show or set base branch
+gflow remote [remote]  # show or set remote
+gflow new <feature>   # create <prefix><feature> from the remote base branch
+gflow pr [branch]     # push branch upstream and open a pull request page
+gflow done [branch]   # switch to base, pull, delete branch, prune remote
 gflow help            # show usage
 ```

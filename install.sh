@@ -36,14 +36,14 @@ write_embedded() {
 
 set -u
 
-main_branch=${GFLOW_MAIN_BRANCH:-main}
-remote=${GFLOW_REMOTE:-origin}
-
 usage() {
 	cat <<'EOF'
 Usage:
   gflow prefix [prefix]
+  gflow base [branch]
+  gflow remote [remote]
   gflow new <feature>
+  gflow pr [branch]
   gflow done [branch]
   gflow help
 EOF
@@ -104,7 +104,202 @@ require_clean_worktree() {
 	fi
 }
 
-read_prefix() {
+config_get() {
+	command git config --local --get "$1" 2>/dev/null
+}
+
+config_set() {
+	key=$1
+	value=$2
+
+	command git config --local "$key" "$value" ||
+		die "could not set $key in local git config"
+}
+
+main_branch_value() {
+	if [ -n "${GFLOW_MAIN_BRANCH:-}" ]; then
+		printf '%s\n' "$GFLOW_MAIN_BRANCH"
+		return 0
+	fi
+
+	if value=$(config_get gflow.main-branch) && [ -n "$value" ]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+
+	if value=$(config_get gflow.mainBranch) && [ -n "$value" ]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+
+	printf '%s\n' main
+}
+
+remote_name_value() {
+	if [ -n "${GFLOW_REMOTE:-}" ]; then
+		printf '%s\n' "$GFLOW_REMOTE"
+		return 0
+	fi
+
+	if value=$(config_get gflow.remote) && [ -n "$value" ]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+
+	printf '%s\n' origin
+}
+
+url_query_value() {
+	printf '%s' "$1" |
+		sed \
+			-e 's/%/%25/g' \
+			-e 's/ /%20/g' \
+			-e 's/#/%23/g' \
+			-e 's/&/%26/g' \
+			-e 's/?/%3F/g' \
+			-e 's/=/%3D/g' \
+			-e 's/+/%2B/g' \
+			-e 's/\//%2F/g'
+}
+
+url_path_ref() {
+	printf '%s' "$1" |
+		sed \
+			-e 's/%/%25/g' \
+			-e 's/ /%20/g' \
+			-e 's/#/%23/g' \
+			-e 's/&/%26/g' \
+			-e 's/?/%3F/g' \
+			-e 's/=/%3D/g' \
+			-e 's/+/%2B/g'
+}
+
+parse_remote_url() {
+	remote_url=$1
+	remote_host=
+	remote_path=
+
+	case $remote_url in
+		http://*|https://*|ssh://*|git://*)
+			remote_rest=${remote_url#*://}
+			remote_authority=${remote_rest%%/*}
+			if [ "$remote_authority" = "$remote_rest" ]; then
+				return 1
+			fi
+
+			remote_host=${remote_authority#*@}
+			remote_path=${remote_rest#*/}
+			;;
+		*@*:*)
+			remote_authority=${remote_url%%:*}
+			remote_host=${remote_authority#*@}
+			remote_path=${remote_url#*:}
+			;;
+		*)
+			return 1
+			;;
+	esac
+
+	remote_path=${remote_path#/}
+	remote_path=${remote_path%/}
+	remote_path=${remote_path%.git}
+
+	case $remote_path in
+		*/*)
+			return 0
+			;;
+	esac
+
+	return 1
+}
+
+pull_request_url() {
+	remote_url=$1
+	base_branch=$2
+	branch=$3
+
+	parse_remote_url "$remote_url" || return 1
+
+	host_lower=$(printf '%s' "$remote_host" | tr '[:upper:]' '[:lower:]')
+	host_name=${host_lower%%:*}
+	base_query=$(url_query_value "$base_branch")
+	branch_query=$(url_query_value "$branch")
+	base_path=$(url_path_ref "$base_branch")
+	branch_path=$(url_path_ref "$branch")
+
+	case $host_name in
+		github.com|*.github.com)
+			printf 'https://%s/%s/compare/%s...%s?expand=1\n' "$remote_host" "$remote_path" "$base_path" "$branch_path"
+			return 0
+			;;
+		*gitlab*)
+			printf 'https://%s/%s/-/merge_requests/new?merge_request[source_branch]=%s&merge_request[target_branch]=%s\n' "$remote_host" "$remote_path" "$branch_query" "$base_query"
+			return 0
+			;;
+		bitbucket.org|*.bitbucket.org)
+			printf 'https://%s/%s/pull-requests/new?source=%s&dest=%s\n' "$remote_host" "$remote_path" "$branch_query" "$base_query"
+			return 0
+			;;
+		dev.azure.com)
+			case $remote_path in
+				*/_git/*)
+					source_ref=$(url_query_value "refs/heads/$branch")
+					target_ref=$(url_query_value "refs/heads/$base_branch")
+					printf 'https://%s/%s/pullrequestcreate?sourceRef=%s&targetRef=%s\n' "$remote_host" "$remote_path" "$source_ref" "$target_ref"
+					return 0
+					;;
+			esac
+			;;
+		ssh.dev.azure.com)
+			case $remote_path in
+				v3/*/*/*)
+					azure_rest=${remote_path#v3/}
+					azure_org=${azure_rest%%/*}
+					azure_rest=${azure_rest#*/}
+					azure_project=${azure_rest%%/*}
+					azure_repo=${azure_rest#*/}
+					source_ref=$(url_query_value "refs/heads/$branch")
+					target_ref=$(url_query_value "refs/heads/$base_branch")
+					printf 'https://dev.azure.com/%s/%s/_git/%s/pullrequestcreate?sourceRef=%s&targetRef=%s\n' "$(url_query_value "$azure_org")" "$(url_query_value "$azure_project")" "$(url_query_value "$azure_repo")" "$source_ref" "$target_ref"
+					return 0
+					;;
+			esac
+			;;
+		*gitea*|*forgejo*)
+			printf 'https://%s/%s/compare/%s...%s\n' "$remote_host" "$remote_path" "$base_path" "$branch_path"
+			return 0
+			;;
+	esac
+
+	return 1
+}
+
+open_url() {
+	url=$1
+	opener=
+
+	if command -v open >/dev/null 2>&1; then
+		opener=open
+	elif command -v xdg-open >/dev/null 2>&1; then
+		opener=xdg-open
+	elif command -v cygstart >/dev/null 2>&1; then
+		opener=cygstart
+	fi
+
+	if [ -z "$opener" ]; then
+		printf '%s\n' "gflow: open pull request at:"
+		printf '%s\n' "$url"
+		return 0
+	fi
+
+	printf '%s\n' "gflow: opening pull request: $url"
+	command "$opener" "$url" >/dev/null 2>&1 && return 0
+
+	printf '%s\n' "gflow: could not open browser; open pull request at:"
+	printf '%s\n' "$url"
+}
+
+read_legacy_prefix() {
 	if [ ! -r "$config_file" ]; then
 		return 1
 	fi
@@ -119,21 +314,29 @@ read_prefix() {
 	return 1
 }
 
+read_prefix() {
+	if prefix=$(config_get gflow.branch-prefix) && [ -n "$prefix" ]; then
+		printf '%s\n' "$prefix"
+		return 0
+	fi
+
+	if prefix=$(config_get gflow.branchPrefix) && [ -n "$prefix" ]; then
+		printf '%s\n' "$prefix"
+		return 0
+	fi
+
+	read_legacy_prefix
+}
+
 write_prefix() {
 	prefix=$1
 
-	mkdir -p "$config_dir" || die "could not create $config_dir"
-	tmp_file=$config_file.tmp.$$
-
-	if ! printf 'branch_prefix=%s\n' "$prefix" >"$tmp_file"; then
-		rm -f "$tmp_file"
-		die "could not write $config_file"
-	fi
-
-	mv "$tmp_file" "$config_file" || die "could not update $config_file"
+	config_set gflow.branch-prefix "$prefix"
 }
 
 prefix_command() {
+	require_git_repo
+
 	if [ "$#" -eq 0 ]; then
 		prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
 		printf '%s\n' "$prefix"
@@ -156,6 +359,54 @@ prefix_command() {
 	printf '%s\n' "gflow: branch prefix set to $prefix"
 }
 
+base_command() {
+	require_git_repo
+
+	if [ "$#" -eq 0 ]; then
+		main_branch_value
+		return 0
+	fi
+
+	if [ "$#" -gt 1 ]; then
+		die "usage: gflow base [branch]"
+	fi
+
+	branch=$1
+	if [ -z "$branch" ]; then
+		die "base branch cannot be empty"
+	fi
+
+	command git check-ref-format --branch "$branch" >/dev/null 2>&1 ||
+		die "invalid branch name '$branch'"
+
+	config_set gflow.main-branch "$branch"
+	printf '%s\n' "gflow: base branch set to $branch"
+}
+
+remote_command() {
+	require_git_repo
+
+	if [ "$#" -eq 0 ]; then
+		remote_name_value
+		return 0
+	fi
+
+	if [ "$#" -gt 1 ]; then
+		die "usage: gflow remote [remote]"
+	fi
+
+	remote=$1
+	if [ -z "$remote" ]; then
+		die "remote cannot be empty"
+	fi
+
+	command git remote get-url "$remote" >/dev/null 2>&1 ||
+		die "remote '$remote' not found"
+
+	config_set gflow.remote "$remote"
+	printf '%s\n' "gflow: remote set to $remote"
+}
+
 target_branch() {
 	feature=$1
 	prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
@@ -173,6 +424,8 @@ target_branch() {
 
 new_command() {
 	require_git_repo
+	main_branch=$(main_branch_value)
+	remote=$(remote_name_value)
 
 	if [ "$#" -ne 1 ]; then
 		die "usage: gflow new <feature>"
@@ -204,8 +457,53 @@ new_command() {
 	command git switch -c "$target"
 }
 
+pr_command() {
+	require_git_repo
+	main_branch=$(main_branch_value)
+	remote=$(remote_name_value)
+
+	if [ "$#" -gt 1 ]; then
+		die "usage: gflow pr [branch]"
+	fi
+
+	if [ "$#" -eq 1 ]; then
+		branch=$1
+	else
+		branch=$(command git branch --show-current 2>/dev/null)
+	fi
+
+	if [ -z "$branch" ]; then
+		die "could not determine current branch; pass one, e.g. gflow pr team/my-feature"
+	fi
+
+	if is_protected_branch "$branch"; then
+		die "refusing to create a pull request for protected branch $branch"
+	fi
+
+	command git check-ref-format --branch "$branch" >/dev/null 2>&1 ||
+		die "invalid branch name '$branch'"
+
+	command git show-ref --verify --quiet "refs/heads/$branch" ||
+		die "local branch '$branch' does not exist"
+
+	remote_url=$(command git remote get-url "$remote" 2>/dev/null) ||
+		die "remote '$remote' not found"
+
+	printf '%s\n' "gflow: pushing $branch to $remote"
+	command git push -u "$remote" "$branch" || exit $?
+
+	if pr_url=$(pull_request_url "$remote_url" "$main_branch" "$branch"); then
+		open_url "$pr_url"
+	else
+		printf '%s\n' "gflow: pushed $branch to $remote"
+		printf '%s\n' "gflow: could not detect a pull request URL for $remote_url"
+	fi
+}
+
 done_command() {
 	require_git_repo
+	main_branch=$(main_branch_value)
+	remote=$(remote_name_value)
 
 	if [ "$#" -gt 1 ]; then
 		die "usage: gflow done [branch]"
@@ -250,8 +548,17 @@ case $subcommand in
 	prefix)
 		prefix_command "$@"
 		;;
+	base)
+		base_command "$@"
+		;;
+	remote)
+		remote_command "$@"
+		;;
 	new)
 		new_command "$@"
+		;;
+	pr)
+		pr_command "$@"
 		;;
 	done)
 		done_command "$@"
@@ -287,19 +594,33 @@ _gflow_local_branches() {
 		grep -v -E '^(main|master|develop)$'
 }
 
+_gflow_all_local_branches() {
+	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null
+}
+
+_gflow_remotes() {
+	git remote 2>/dev/null
+}
+
 _gflow_complete() {
 	local cur
 
 	cur=${COMP_WORDS[COMP_CWORD]}
 
 	if [ "$COMP_CWORD" -eq 1 ]; then
-		COMPREPLY=($(compgen -W "prefix new done help" -- "$cur"))
+		COMPREPLY=($(compgen -W "prefix base remote new pr done help" -- "$cur"))
 		return 0
 	fi
 
 	case ${COMP_WORDS[1]} in
-		done)
+		done|pr)
 			COMPREPLY=($(compgen -W "$(_gflow_local_branches)" -- "$cur"))
+			;;
+		base)
+			COMPREPLY=($(compgen -W "$(_gflow_all_local_branches)" -- "$cur"))
+			;;
+		remote)
+			COMPREPLY=($(compgen -W "$(_gflow_remotes)" -- "$cur"))
 			;;
 		new|prefix)
 			COMPREPLY=()
@@ -332,15 +653,29 @@ function __fish_gflow_local_branches
 	command git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null | command grep -v -E '^(main|master|develop)$'
 end
 
+function __fish_gflow_all_local_branches
+	command git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null
+end
+
+function __fish_gflow_remotes
+	command git remote 2>/dev/null
+end
+
 complete -c gflow -e
 
 complete -c gflow -f
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a prefix -d 'Show or set branch prefix'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a new -d 'Create a prefixed feature branch from main'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a done -d 'Finish and delete a local feature branch'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix new done help' -a help -d 'Show usage'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a prefix -d 'Show or set branch prefix'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a base -d 'Show or set base branch'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a remote -d 'Show or set remote'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a new -d 'Create a prefixed feature branch'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a pr -d 'Push a branch and open a PR'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a done -d 'Finish and delete a local feature branch'
+complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a help -d 'Show usage'
 complete -c gflow -n '__fish_seen_subcommand_from prefix' -f -a 'team/' -d 'Branch prefix'
 complete -c gflow -n '__fish_seen_subcommand_from done' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
+complete -c gflow -n '__fish_seen_subcommand_from pr' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to push'
+complete -c gflow -n '__fish_seen_subcommand_from base' -f -a '(__fish_gflow_all_local_branches)' -d 'Base branch'
+complete -c gflow -n '__fish_seen_subcommand_from remote' -f -a '(__fish_gflow_remotes)' -d 'Remote'
 complete -c gflow -n '__fish_seen_subcommand_from new' -f
 GFLOW_FISH
 			;;
@@ -364,19 +699,33 @@ _gflow_local_branches() {
 		grep -v -E '^(main|master|develop)$'
 }
 
+_gflow_all_local_branches() {
+	git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null
+}
+
+_gflow_remotes() {
+	git remote 2>/dev/null
+}
+
 _gflow() {
 	local context state line
 	typeset -A opt_args
 
 	_arguments -C \
-		'1:command:((prefix\:Show\ or\ set\ branch\ prefix new\:Create\ a\ prefixed\ feature\ branch\ from\ main done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
+		'1:command:((prefix\:Show\ or\ set\ branch\ prefix base\:Show\ or\ set\ base\ branch remote\:Show\ or\ set\ remote new\:Create\ a\ prefixed\ feature\ branch pr\:Push\ a\ branch\ and\ open\ a\ PR done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
 		'*::arg:->args'
 
 	case $state in
 		args)
 			case ${line[1]} in
-				done)
+				done|pr)
 					_arguments '2:branch:($(_gflow_local_branches))'
+					;;
+				base)
+					_arguments '2:branch:($(_gflow_all_local_branches))'
+					;;
+				remote)
+					_arguments '2:remote:($(_gflow_remotes))'
 					;;
 				new)
 					_message 'feature name'
