@@ -722,9 +722,9 @@ complete -c gflow -n 'not __fish_seen_subcommand_from config new pr done help' -
 complete -c gflow -n '__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from prefix base remote' -f -a prefix -d 'Show or set branch prefix'
 complete -c gflow -n '__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from prefix base remote' -f -a base -d 'Show or set base branch'
 complete -c gflow -n '__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from prefix base remote' -f -a remote -d 'Show or set remote'
-complete -c gflow -n '__fish_seen_subcommand_from config prefix' -f -a 'team/' -d 'Branch prefix'
-complete -c gflow -n '__fish_seen_subcommand_from config base' -f -a '(__fish_gflow_all_local_branches)' -d 'Base branch'
-complete -c gflow -n '__fish_seen_subcommand_from config remote' -f -a '(__fish_gflow_remotes)' -d 'Remote'
+complete -c gflow -n '__fish_seen_subcommand_from config; and __fish_seen_subcommand_from prefix' -f -a 'team/' -d 'Branch prefix'
+complete -c gflow -n '__fish_seen_subcommand_from config; and __fish_seen_subcommand_from base' -f -a '(__fish_gflow_all_local_branches)' -d 'Base branch'
+complete -c gflow -n '__fish_seen_subcommand_from config; and __fish_seen_subcommand_from remote' -f -a '(__fish_gflow_remotes)' -d 'Remote'
 complete -c gflow -n '__fish_seen_subcommand_from done' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
 complete -c gflow -n '__fish_seen_subcommand_from pr' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to push'
 complete -c gflow -n '__fish_seen_subcommand_from new' -f
