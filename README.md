@@ -3,9 +3,9 @@
 Small Git branch workflow helpers:
 
 ```sh
-gflow prefix team/
-gflow base trunk
-gflow remote upstream
+gflow config prefix team/
+gflow config base trunk
+gflow config remote upstream
 gflow new api-cleanup
 gflow pr
 gflow done team/api-cleanup
@@ -58,31 +58,31 @@ GFLOW_BASE_URL="https://example.com/gflow" sh install.sh
 Repo settings are saved in local Git config:
 
 ```sh
-gflow prefix team/
-gflow base trunk
-gflow remote upstream
+gflow config prefix team/
+gflow config base trunk
+gflow config remote upstream
 ```
 
-- `gflow prefix [prefix]` stores `gflow.branch-prefix`.
-- `gflow base [branch]` stores `gflow.main-branch`. The default is `main`.
-- `gflow remote [remote]` stores `gflow.remote`. The default is `origin`.
+- `gflow config prefix [prefix]` stores `gflow.branch-prefix`.
+- `gflow config base [branch]` stores `gflow.main-branch`. The default is `main`.
+- `gflow config remote [remote]` stores `gflow.remote`. The default is `origin`.
+- `gflow config` shows the effective repo settings.
 
-Runtime variables can override the repo settings for one command:
+Runtime variables override the repo settings for the command invocation where
+they are set:
 
 ```sh
 GFLOW_MAIN_BRANCH=trunk gflow new my-feature
 GFLOW_REMOTE=upstream gflow done team/my-feature
 ```
 
-- `GFLOW_MAIN_BRANCH` overrides the base branch.
-- `GFLOW_REMOTE` overrides the configured remote.
+- `GFLOW_MAIN_BRANCH` overrides `gflow.main-branch`.
+- `GFLOW_REMOTE` overrides `gflow.remote`.
 
 ## Commands
 
 ```sh
-gflow prefix [prefix]  # show or set branch prefix
-gflow base [branch]    # show or set base branch
-gflow remote [remote]  # show or set remote
+gflow config [name] [value]  # show or set repo config
 gflow new <feature>   # create <prefix><feature> from the remote base branch
 gflow pr [branch]     # push branch upstream and open a pull request page
 gflow done [branch]   # switch to base, pull, delete branch, prune remote

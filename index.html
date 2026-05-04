@@ -379,16 +379,20 @@
             </thead>
             <tbody>
               <tr>
-                <td><code class="command">gflow prefix team/</code></td>
+                <td><code class="command">gflow config prefix team/</code></td>
                 <td>Save the branch prefix in local Git config.</td>
               </tr>
               <tr>
-                <td><code class="command">gflow base trunk</code></td>
+                <td><code class="command">gflow config base trunk</code></td>
                 <td>Save the base branch in local Git config.</td>
               </tr>
               <tr>
-                <td><code class="command">gflow remote upstream</code></td>
+                <td><code class="command">gflow config remote upstream</code></td>
                 <td>Save the remote in local Git config.</td>
+              </tr>
+              <tr>
+                <td><code class="command">gflow config</code></td>
+                <td>Show the effective repo settings.</td>
               </tr>
               <tr>
                 <td><code class="command">gflow new api-cleanup</code></td>
@@ -452,12 +456,12 @@
               <tr>
                 <td><code class="option">GFLOW_MAIN_BRANCH</code></td>
                 <td>Runtime</td>
-                <td>Override the base branch for one command.</td>
+                <td>Override <code>gflow.main-branch</code> for the current command invocation.</td>
               </tr>
               <tr>
                 <td><code class="option">GFLOW_REMOTE</code></td>
                 <td>Runtime</td>
-                <td>Override the remote for one command.</td>
+                <td>Override <code>gflow.remote</code> for the current command invocation.</td>
               </tr>
             </tbody>
           </table>
@@ -475,8 +479,8 @@
             <tbody>
               <tr>
                 <td><code class="change-date">2026-05-04</code></td>
-                <td>Added <code>gflow base</code>, <code>gflow remote</code>, and <code>gflow pr</code>, with repo-local
-                  base/remote config and pull request URLs for common Git hosts.</td>
+                <td>Added <code>gflow config</code> and <code>gflow pr</code>, with repo-local settings and pull
+                  request URLs for recognized remote URL formats.</td>
               </tr>
               <tr>
                 <td><code class="change-date">2026-04-29</code></td>

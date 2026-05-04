@@ -29,26 +29,33 @@ _gflow() {
 	typeset -A opt_args
 
 	_arguments -C \
-		'1:command:((prefix\:Show\ or\ set\ branch\ prefix base\:Show\ or\ set\ base\ branch remote\:Show\ or\ set\ remote new\:Create\ a\ prefixed\ feature\ branch pr\:Push\ a\ branch\ and\ open\ a\ PR done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
+		'1:command:((config\:Show\ or\ set\ repo\ config new\:Create\ a\ prefixed\ feature\ branch pr\:Push\ a\ branch\ and\ open\ a\ PR done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
 		'*::arg:->args'
 
 	case $state in
 		args)
 			case ${line[1]} in
+				config)
+					case ${line[2]} in
+						base)
+							_arguments '3:branch:($(_gflow_all_local_branches))'
+							;;
+						remote)
+							_arguments '3:remote:($(_gflow_remotes))'
+							;;
+						prefix)
+							_message 'branch prefix'
+							;;
+						*)
+							_arguments '2:setting:((prefix\:Show\ or\ set\ branch\ prefix base\:Show\ or\ set\ base\ branch remote\:Show\ or\ set\ remote))'
+							;;
+					esac
+					;;
 				done|pr)
 					_arguments '2:branch:($(_gflow_local_branches))'
 					;;
-				base)
-					_arguments '2:branch:($(_gflow_all_local_branches))'
-					;;
-				remote)
-					_arguments '2:remote:($(_gflow_remotes))'
-					;;
 				new)
 					_message 'feature name'
-					;;
-				prefix)
-					_message 'branch prefix'
 					;;
 			esac
 			;;

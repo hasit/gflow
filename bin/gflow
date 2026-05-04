@@ -5,9 +5,7 @@ set -u
 usage() {
 	cat <<'EOF'
 Usage:
-  gflow prefix [prefix]
-  gflow base [branch]
-  gflow remote [remote]
+  gflow config [prefix|base|remote] [value]
   gflow new <feature>
   gflow pr [branch]
   gflow done [branch]
@@ -304,13 +302,13 @@ prefix_command() {
 	require_git_repo
 
 	if [ "$#" -eq 0 ]; then
-		prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
+		prefix=$(read_prefix) || die "no branch prefix set; run: gflow config prefix team/"
 		printf '%s\n' "$prefix"
 		return 0
 	fi
 
 	if [ "$#" -gt 1 ]; then
-		die "prefix accepts at most one argument"
+		die "usage: gflow config prefix [prefix]"
 	fi
 
 	prefix=$(normalize_prefix "$1")
@@ -334,7 +332,7 @@ base_command() {
 	fi
 
 	if [ "$#" -gt 1 ]; then
-		die "usage: gflow base [branch]"
+		die "usage: gflow config base [branch]"
 	fi
 
 	branch=$1
@@ -358,7 +356,7 @@ remote_command() {
 	fi
 
 	if [ "$#" -gt 1 ]; then
-		die "usage: gflow remote [remote]"
+		die "usage: gflow config remote [remote]"
 	fi
 
 	remote=$1
@@ -373,9 +371,43 @@ remote_command() {
 	printf '%s\n' "gflow: remote set to $remote"
 }
 
+config_command() {
+	require_git_repo
+
+	if [ "$#" -eq 0 ]; then
+		if prefix=$(read_prefix); then
+			printf 'prefix=%s\n' "$prefix"
+		else
+			printf 'prefix=\n'
+		fi
+
+		printf 'base=%s\n' "$(main_branch_value)"
+		printf 'remote=%s\n' "$(remote_name_value)"
+		return 0
+	fi
+
+	setting=$1
+	shift
+
+	case $setting in
+		prefix|branch-prefix)
+			prefix_command "$@"
+			;;
+		base|main-branch)
+			base_command "$@"
+			;;
+		remote)
+			remote_command "$@"
+			;;
+		*)
+			die "usage: gflow config [prefix|base|remote] [value]"
+			;;
+	esac
+}
+
 target_branch() {
 	feature=$1
-	prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
+	prefix=$(read_prefix) || die "no branch prefix set; run: gflow config prefix team/"
 	prefix=$(normalize_prefix "$prefix")
 
 	case $feature in
@@ -511,6 +543,9 @@ if [ "$#" -gt 0 ]; then
 fi
 
 case $subcommand in
+	config)
+		config_command "$@"
+		;;
 	prefix)
 		prefix_command "$@"
 		;;

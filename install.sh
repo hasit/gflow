@@ -39,9 +39,7 @@ set -u
 usage() {
 	cat <<'EOF'
 Usage:
-  gflow prefix [prefix]
-  gflow base [branch]
-  gflow remote [remote]
+  gflow config [prefix|base|remote] [value]
   gflow new <feature>
   gflow pr [branch]
   gflow done [branch]
@@ -338,13 +336,13 @@ prefix_command() {
 	require_git_repo
 
 	if [ "$#" -eq 0 ]; then
-		prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
+		prefix=$(read_prefix) || die "no branch prefix set; run: gflow config prefix team/"
 		printf '%s\n' "$prefix"
 		return 0
 	fi
 
 	if [ "$#" -gt 1 ]; then
-		die "prefix accepts at most one argument"
+		die "usage: gflow config prefix [prefix]"
 	fi
 
 	prefix=$(normalize_prefix "$1")
@@ -368,7 +366,7 @@ base_command() {
 	fi
 
 	if [ "$#" -gt 1 ]; then
-		die "usage: gflow base [branch]"
+		die "usage: gflow config base [branch]"
 	fi
 
 	branch=$1
@@ -392,7 +390,7 @@ remote_command() {
 	fi
 
 	if [ "$#" -gt 1 ]; then
-		die "usage: gflow remote [remote]"
+		die "usage: gflow config remote [remote]"
 	fi
 
 	remote=$1
@@ -407,9 +405,43 @@ remote_command() {
 	printf '%s\n' "gflow: remote set to $remote"
 }
 
+config_command() {
+	require_git_repo
+
+	if [ "$#" -eq 0 ]; then
+		if prefix=$(read_prefix); then
+			printf 'prefix=%s\n' "$prefix"
+		else
+			printf 'prefix=\n'
+		fi
+
+		printf 'base=%s\n' "$(main_branch_value)"
+		printf 'remote=%s\n' "$(remote_name_value)"
+		return 0
+	fi
+
+	setting=$1
+	shift
+
+	case $setting in
+		prefix|branch-prefix)
+			prefix_command "$@"
+			;;
+		base|main-branch)
+			base_command "$@"
+			;;
+		remote)
+			remote_command "$@"
+			;;
+		*)
+			die "usage: gflow config [prefix|base|remote] [value]"
+			;;
+	esac
+}
+
 target_branch() {
 	feature=$1
-	prefix=$(read_prefix) || die "no branch prefix set; run: gflow prefix team/"
+	prefix=$(read_prefix) || die "no branch prefix set; run: gflow config prefix team/"
 	prefix=$(normalize_prefix "$prefix")
 
 	case $feature in
@@ -545,6 +577,9 @@ if [ "$#" -gt 0 ]; then
 fi
 
 case $subcommand in
+	config)
+		config_command "$@"
+		;;
 	prefix)
 		prefix_command "$@"
 		;;
@@ -608,21 +643,36 @@ _gflow_complete() {
 	cur=${COMP_WORDS[COMP_CWORD]}
 
 	if [ "$COMP_CWORD" -eq 1 ]; then
-		COMPREPLY=($(compgen -W "prefix base remote new pr done help" -- "$cur"))
+		COMPREPLY=($(compgen -W "config new pr done help" -- "$cur"))
 		return 0
 	fi
 
 	case ${COMP_WORDS[1]} in
+		config)
+			if [ "$COMP_CWORD" -eq 2 ]; then
+				COMPREPLY=($(compgen -W "prefix base remote" -- "$cur"))
+				return 0
+			fi
+
+			case ${COMP_WORDS[2]} in
+				base)
+					COMPREPLY=($(compgen -W "$(_gflow_all_local_branches)" -- "$cur"))
+					;;
+				remote)
+					COMPREPLY=($(compgen -W "$(_gflow_remotes)" -- "$cur"))
+					;;
+				prefix)
+					COMPREPLY=()
+					;;
+				*)
+					COMPREPLY=()
+					;;
+			esac
+			;;
 		done|pr)
 			COMPREPLY=($(compgen -W "$(_gflow_local_branches)" -- "$cur"))
 			;;
-		base)
-			COMPREPLY=($(compgen -W "$(_gflow_all_local_branches)" -- "$cur"))
-			;;
-		remote)
-			COMPREPLY=($(compgen -W "$(_gflow_remotes)" -- "$cur"))
-			;;
-		new|prefix)
+		new)
 			COMPREPLY=()
 			;;
 		*)
@@ -664,18 +714,19 @@ end
 complete -c gflow -e
 
 complete -c gflow -f
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a prefix -d 'Show or set branch prefix'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a base -d 'Show or set base branch'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a remote -d 'Show or set remote'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a new -d 'Create a prefixed feature branch'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a pr -d 'Push a branch and open a PR'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a done -d 'Finish and delete a local feature branch'
-complete -c gflow -n 'not __fish_seen_subcommand_from prefix base remote new pr done help' -a help -d 'Show usage'
-complete -c gflow -n '__fish_seen_subcommand_from prefix' -f -a 'team/' -d 'Branch prefix'
+complete -c gflow -n 'not __fish_seen_subcommand_from config new pr done help' -a config -d 'Show or set repo config'
+complete -c gflow -n 'not __fish_seen_subcommand_from config new pr done help' -a new -d 'Create a prefixed feature branch'
+complete -c gflow -n 'not __fish_seen_subcommand_from config new pr done help' -a pr -d 'Push a branch and open a PR'
+complete -c gflow -n 'not __fish_seen_subcommand_from config new pr done help' -a done -d 'Finish and delete a local feature branch'
+complete -c gflow -n 'not __fish_seen_subcommand_from config new pr done help' -a help -d 'Show usage'
+complete -c gflow -n '__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from prefix base remote' -f -a prefix -d 'Show or set branch prefix'
+complete -c gflow -n '__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from prefix base remote' -f -a base -d 'Show or set base branch'
+complete -c gflow -n '__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from prefix base remote' -f -a remote -d 'Show or set remote'
+complete -c gflow -n '__fish_seen_subcommand_from config prefix' -f -a 'team/' -d 'Branch prefix'
+complete -c gflow -n '__fish_seen_subcommand_from config base' -f -a '(__fish_gflow_all_local_branches)' -d 'Base branch'
+complete -c gflow -n '__fish_seen_subcommand_from config remote' -f -a '(__fish_gflow_remotes)' -d 'Remote'
 complete -c gflow -n '__fish_seen_subcommand_from done' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to delete after switching to main'
 complete -c gflow -n '__fish_seen_subcommand_from pr' -f -a '(__fish_gflow_local_branches)' -d 'Local branch to push'
-complete -c gflow -n '__fish_seen_subcommand_from base' -f -a '(__fish_gflow_all_local_branches)' -d 'Base branch'
-complete -c gflow -n '__fish_seen_subcommand_from remote' -f -a '(__fish_gflow_remotes)' -d 'Remote'
 complete -c gflow -n '__fish_seen_subcommand_from new' -f
 GFLOW_FISH
 			;;
@@ -712,26 +763,33 @@ _gflow() {
 	typeset -A opt_args
 
 	_arguments -C \
-		'1:command:((prefix\:Show\ or\ set\ branch\ prefix base\:Show\ or\ set\ base\ branch remote\:Show\ or\ set\ remote new\:Create\ a\ prefixed\ feature\ branch pr\:Push\ a\ branch\ and\ open\ a\ PR done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
+		'1:command:((config\:Show\ or\ set\ repo\ config new\:Create\ a\ prefixed\ feature\ branch pr\:Push\ a\ branch\ and\ open\ a\ PR done\:Finish\ and\ delete\ a\ local\ feature\ branch help\:Show\ usage))' \
 		'*::arg:->args'
 
 	case $state in
 		args)
 			case ${line[1]} in
+				config)
+					case ${line[2]} in
+						base)
+							_arguments '3:branch:($(_gflow_all_local_branches))'
+							;;
+						remote)
+							_arguments '3:remote:($(_gflow_remotes))'
+							;;
+						prefix)
+							_message 'branch prefix'
+							;;
+						*)
+							_arguments '2:setting:((prefix\:Show\ or\ set\ branch\ prefix base\:Show\ or\ set\ base\ branch remote\:Show\ or\ set\ remote))'
+							;;
+					esac
+					;;
 				done|pr)
 					_arguments '2:branch:($(_gflow_local_branches))'
 					;;
-				base)
-					_arguments '2:branch:($(_gflow_all_local_branches))'
-					;;
-				remote)
-					_arguments '2:remote:($(_gflow_remotes))'
-					;;
 				new)
 					_message 'feature name'
-					;;
-				prefix)
-					_message 'branch prefix'
 					;;
 			esac
 			;;

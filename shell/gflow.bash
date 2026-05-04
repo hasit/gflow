@@ -30,21 +30,36 @@ _gflow_complete() {
 	cur=${COMP_WORDS[COMP_CWORD]}
 
 	if [ "$COMP_CWORD" -eq 1 ]; then
-		COMPREPLY=($(compgen -W "prefix base remote new pr done help" -- "$cur"))
+		COMPREPLY=($(compgen -W "config new pr done help" -- "$cur"))
 		return 0
 	fi
 
 	case ${COMP_WORDS[1]} in
+		config)
+			if [ "$COMP_CWORD" -eq 2 ]; then
+				COMPREPLY=($(compgen -W "prefix base remote" -- "$cur"))
+				return 0
+			fi
+
+			case ${COMP_WORDS[2]} in
+				base)
+					COMPREPLY=($(compgen -W "$(_gflow_all_local_branches)" -- "$cur"))
+					;;
+				remote)
+					COMPREPLY=($(compgen -W "$(_gflow_remotes)" -- "$cur"))
+					;;
+				prefix)
+					COMPREPLY=()
+					;;
+				*)
+					COMPREPLY=()
+					;;
+			esac
+			;;
 		done|pr)
 			COMPREPLY=($(compgen -W "$(_gflow_local_branches)" -- "$cur"))
 			;;
-		base)
-			COMPREPLY=($(compgen -W "$(_gflow_all_local_branches)" -- "$cur"))
-			;;
-		remote)
-			COMPREPLY=($(compgen -W "$(_gflow_remotes)" -- "$cur"))
-			;;
-		new|prefix)
+		new)
 			COMPREPLY=()
 			;;
 		*)
