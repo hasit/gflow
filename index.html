@@ -290,6 +290,11 @@
       white-space: nowrap;
     }
 
+    .change-date {
+      color: var(--near-black);
+      white-space: nowrap;
+    }
+
     .footer {
       display: flex;
       justify-content: space-between;
@@ -353,9 +358,7 @@
             Zsh, Bash, or a generic PATH setup.
           </p>
           <div class="install-shell">
-            <code
-              class="install"
-              id="install-command">curl -fsSL https://hasit.github.io/gflow/install.sh | sh</code>
+            <code class="install" id="install-command">curl -fsSL https://hasit.github.io/gflow/install.sh | sh</code>
             <button class="copy-button" type="button" data-copy-target="install-command">
               <span class="copy-icon" aria-hidden="true"></span>
               <span class="copy-label" aria-live="polite">Copy</span>
@@ -455,6 +458,35 @@
                 <td><code class="option">GFLOW_REMOTE</code></td>
                 <td>Runtime</td>
                 <td>Override the remote for one command.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section aria-labelledby="changelog-title">
+          <h2 id="changelog-title">Changelog</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code class="change-date">2026-05-04</code></td>
+                <td>Added <code>gflow base</code>, <code>gflow remote</code>, and <code>gflow pr</code>, with repo-local
+                  base/remote config and pull request URLs for common Git hosts.</td>
+              </tr>
+              <tr>
+                <td><code class="change-date">2026-04-29</code></td>
+                <td>Reworked shell integration into installable Bash, Fish, and Zsh files, added copyable website
+                  install instructions, and retired the older <code>gdone</code> shortcut.</td>
+              </tr>
+              <tr>
+                <td><code class="change-date">2026-04-28</code></td>
+                <td>Launched the first workflow with branch prefixes, <code>gflow new</code>, <code>gflow done</code>,
+                  shell completions, an embedded installer, bundled fonts, and the static website.</td>
               </tr>
             </tbody>
           </table>
