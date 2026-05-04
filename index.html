@@ -57,8 +57,10 @@
       --olive: #5e5d59;
       --stone: #87867f;
       --brand: #1B365D;
+      --rule: #d5d1c3;
       --border: #e8e6dc;
       --border-soft: #e5e3d8;
+      --measure: 760px;
       --serif: "Newsreader", "Source Serif 4", "Charter", Georgia, "Times New Roman", serif;
       --sans: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
       --mono: "JetBrains Mono", "SF Mono", Consolas, Monaco, monospace;
@@ -96,8 +98,9 @@
     .topbar {
       display: flex;
       align-items: center;
+      width: min(100%, var(--measure));
       padding-bottom: 18px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--rule);
       font-family: var(--sans);
     }
 
@@ -157,12 +160,13 @@
     }
 
     .hero {
+      width: min(100%, var(--measure));
       padding: 30px 0 28px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--rule);
     }
 
     .subtitle {
-      max-width: 760px;
+      max-width: var(--measure);
       margin: 0 0 20px;
       color: var(--olive);
       font-size: 22px;
